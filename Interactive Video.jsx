@@ -11,12 +11,24 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 
-// --- INITIALIZE FIREBASE ---
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// --- INITIALIZE FIREBASE SAFELY ---
+let app = null;
+let auth = null;
+let db = null;
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+
+try {
+  if (Object.keys(firebaseConfig).length > 0) {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+  } else {
+    console.warn("Firebase config is empty. App will run in offline/fallback mode.");
+  }
+} catch (error) {
+  console.error("Global Firebase initialization failed:", error);
+}
 
 // --- CONSTANTS ---
 const VIDEO_URL = "https://www.w3schools.com/html/mov_bbb.mp4";
@@ -421,50 +433,83 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [view, setView] = useState('landing'); // 'landing' | 'player' | 'admin'
   const [questions, setQuestions] = useState([]);
+  
+  // Loading and Error States
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Setup Firebase Auth & Data Listeners
   useEffect(() => {
     let unsubscribeAuth;
     let unsubscribeQuestions;
 
-    const initFirebase = async () => {
-      // 1. Auth First (Mandatory)
+    const initFirebaseData = async () => {
       try {
+        // Safe check if Firebase failed to initialize globally
+        if (!auth || !db) {
+          console.warn("Firebase is not initialized. Falling back to local data.");
+          setQuestions(DEFAULT_QUIZ_DATA);
+          setUser({ uid: 'mock-local-user' });
+          setLoading(false);
+          return;
+        }
+
+        // 1. Auth First (Mandatory)
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
           await signInWithCustomToken(auth, __initial_auth_token);
         } else {
           await signInAnonymously(auth);
         }
-      } catch (err) {
-        console.error("Auth failed:", err);
-      }
 
-      unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-        setUser(currentUser);
-        
-        // 2. Fetch Public Questions when user is known
-        if (currentUser) {
-          const qRef = collection(db, 'artifacts', appId, 'public', 'data', 'questions');
-          unsubscribeQuestions = onSnapshot(qRef, (snapshot) => {
-            const fetchedQ = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            // Sort by time
-            fetchedQ.sort((a, b) => a.time - b.time);
-            setQuestions(fetchedQ.length > 0 ? fetchedQ : DEFAULT_QUIZ_DATA);
-          }, (err) => {
-            console.error("Firestore read error:", err);
-            setQuestions(DEFAULT_QUIZ_DATA); // Fallback
-          });
-        }
-      });
+        unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+          if (currentUser) {
+            setUser(currentUser);
+            // 2. Fetch Public Questions when user is known
+            const qRef = collection(db, 'artifacts', appId, 'public', 'data', 'questions');
+            unsubscribeQuestions = onSnapshot(qRef, (snapshot) => {
+              const fetchedQ = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              // Sort by time
+              fetchedQ.sort((a, b) => a.time - b.time);
+              setQuestions(fetchedQ.length > 0 ? fetchedQ : DEFAULT_QUIZ_DATA);
+              setLoading(false);
+            }, (err) => {
+              console.error("Firestore read error:", err);
+              setError("Failed to fetch questions. Using defaults.");
+              setQuestions(DEFAULT_QUIZ_DATA); // Fallback
+              setLoading(false);
+            });
+          } else {
+            console.warn("User auth returned null. Falling back to local settings.");
+            setUser({ uid: 'mock-local-user' });
+            setQuestions(DEFAULT_QUIZ_DATA);
+            setLoading(false);
+          }
+        });
+      } catch (err) {
+        console.error("Firebase auth/init execution failed:", err);
+        setError("Could not connect to online server.");
+        setUser({ uid: 'mock-local-user' });
+        setQuestions(DEFAULT_QUIZ_DATA);
+        setLoading(false);
+      }
     };
 
-    initFirebase();
+    initFirebaseData();
 
     return () => {
       if (unsubscribeAuth) unsubscribeAuth();
       if (unsubscribeQuestions) unsubscribeQuestions();
     };
   }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0A0F1C] flex flex-col items-center justify-center text-slate-200 font-sans">
+        <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4 shadow-[0_0_15px_rgba(99,102,241,0.5)]"></div>
+        <p className="text-xl font-medium animate-pulse text-indigo-100">Initializing Experience...</p>
+      </div>
+    );
+  }
 
   const handleSaveAnswer = async (answerData) => {
     if (!user) return;
