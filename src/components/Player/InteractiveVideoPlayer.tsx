@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useQuizContext } from '../../context/QuizContext';
 import { useVideoPlayer } from '../../hooks/useVideoPlayer';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
@@ -7,11 +7,19 @@ import { ProgressBar } from './ProgressBar';
 import { QuizOverlay } from './QuizOverlay';
 import { ScoreHeader } from './ScoreHeader';
 import { CompletionScreen } from './CompletionScreen';
+import { AddQuestionModal } from '../Playground/AddQuestionModal';
+import { PlusCircle } from 'lucide-react';
 
-export const InteractiveVideoPlayer = () => {
-  const { config, questions, engine, handleAnswerSubmit, progress, completeQuiz } = useQuizContext();
+interface InteractiveVideoPlayerProps {
+  customVideoUrl?: string;
+  isCreatorMode?: boolean;
+}
+
+export const InteractiveVideoPlayer: React.FC<InteractiveVideoPlayerProps> = ({ customVideoUrl, isCreatorMode }) => {
+  const { config, questions, setQuestions, engine, handleAnswerSubmit, progress, completeQuiz } = useQuizContext();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const playerState = useVideoPlayer({ videoRef, containerRef });
 
@@ -62,7 +70,7 @@ export const InteractiveVideoPlayer = () => {
           <video
             ref={videoRef}
             className="vq-video-element"
-            src={config.videoUrl}
+            src={customVideoUrl || config.videoUrl}
             playsInline
             {...playerState.videoEvents}
           />
@@ -70,6 +78,25 @@ export const InteractiveVideoPlayer = () => {
           <div className="vq-video-error">
             <p>Video unavailable.</p>
           </div>
+        )}
+
+        {/* Creator Mode Add Button */}
+        {isCreatorMode && !playerState.isPlaying && !engine.showOverlay && !showAddModal && playerState.currentTime > 0 && (
+          <button className="vq-fab vq-animate-in" onClick={() => setShowAddModal(true)}>
+            <PlusCircle size={20} /> Add Question Here
+          </button>
+        )}
+
+        {/* Add Question Modal */}
+        {showAddModal && (
+          <AddQuestionModal 
+            time={Math.floor(playerState.currentTime)} 
+            onClose={() => setShowAddModal(false)}
+            onAdd={(q) => {
+              setQuestions([...questions, q]);
+              setShowAddModal(false);
+            }}
+          />
         )}
 
         {/* Quiz Overlay */}

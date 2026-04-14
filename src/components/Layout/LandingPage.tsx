@@ -17,11 +17,11 @@ export const LandingPage: React.FC<{ onNavigate: (view: string) => void }> = ({ 
             Embed MCQs, True/False, and text quizzes directly into your videos to test knowledge instantly.
           </p>
           <div className="vq-hero-actions">
-            <button onClick={() => onNavigate('player')} className="vq-hero-btn-primary">
-              Try the Player
+            <button onClick={() => onNavigate('playground')} className="vq-hero-btn-primary">
+              Try It Yourself
             </button>
-            <button onClick={() => onNavigate('admin')} className="vq-hero-btn-secondary">
-              Open Admin Dashboard
+            <button onClick={() => onNavigate('docs')} className="vq-hero-btn-secondary">
+              Read the Docs
             </button>
           </div>
         </div>

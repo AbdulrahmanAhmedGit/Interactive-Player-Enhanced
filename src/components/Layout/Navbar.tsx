@@ -1,4 +1,4 @@
-import { PlayCircle, Settings, Video } from 'lucide-react';
+import { PlayCircle, Settings, Video, FileText, Sparkles } from 'lucide-react';
 
 interface NavbarProps {
   currentView: string;
@@ -17,12 +17,17 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
         </div>
         
         <div className="vq-navbar-actions">
-          {currentView !== 'admin' && (
-            <button onClick={() => onNavigate('admin')} className="vq-nav-link">
-              <Settings size={16} /> Creator Mode
+          {currentView !== 'docs' && (
+            <button onClick={() => onNavigate('docs')} className="vq-nav-link">
+              <FileText size={16} /> Docs
             </button>
           )}
-          {currentView !== 'player' && currentView !== 'landing' && (
+          {currentView !== 'playground' && (
+            <button onClick={() => onNavigate('playground')} className="vq-btn vq-btn-primary vq-btn-sm" style={{ borderRadius: 'var(--vq-radius-full)' }}>
+              <Sparkles size={16} /> Try It Yourself
+            </button>
+          )}
+          {currentView === 'admin' && (
             <button onClick={() => onNavigate('player')} className="vq-nav-link">
               <Video size={16} /> Watch Video
             </button>
