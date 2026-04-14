@@ -1,4 +1,4 @@
-import { PlayCircle, Settings, Video, FileText, Sparkles } from 'lucide-react';
+import { PlayCircle, Video, FileText, Sparkles } from 'lucide-react';
 
 interface NavbarProps {
   currentView: string;

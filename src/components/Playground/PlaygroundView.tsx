@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { InteractiveVideoPlayer } from '../Player/InteractiveVideoPlayer';
 import { useQuizContext } from '../../context/QuizContext';
 import { Video, HelpCircle, PlusCircle, Link, Upload as UploadIcon } from 'lucide-react';
-import { QuestionForm } from '../Admin/QuestionForm';
+
 
 export const PlaygroundView: React.FC = () => {
   const { questions, setQuestions, config } = useQuizContext();
